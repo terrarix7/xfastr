@@ -1,7 +1,7 @@
 "use client";
 
 import { api } from "@/convex/_generated/api";
-import { useAction, useQuery } from "convex/react";
+import { Authenticated, useAction, useQuery } from "convex/react";
 import { CheckoutLink } from "@convex-dev/polar/react";
 import React from "react";
 
@@ -24,15 +24,16 @@ function Page() {
                 <h3>{product.name}</h3>
                 <p>Price: ${product.prices?.[0]?.priceAmount || "N/A"}</p>
                 <p>ID: {product.id}</p>
-                <CheckoutLink
-                  polarApi={{
-                    generateCheckoutLink: api.polar.generateCheckoutLink,
-                  }}
-                  productIds={[product.id]}
-                  embed={false}
-                >
-                  Subscribe
-                </CheckoutLink>
+                <Authenticated>
+                  <CheckoutLink
+                    polarApi={{
+                      generateCheckoutLink: api.polar.generateCheckoutLink,
+                    }}
+                    productIds={[product.id]}
+                  >
+                    Subscribe
+                  </CheckoutLink>
+                </Authenticated>
               </li>
             ))}
           </ul>
