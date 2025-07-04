@@ -19,7 +19,7 @@ export const listProducts = query({
 export const syncProducts = action({
   args: {},
   handler: async (ctx) => {
-    const products = await polar.listProducts(ctx);
+    const products = await polar.syncProducts(ctx);
     console.log(products);
     return products;
   },
