@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "npm-run-all --parallel dev:frontend dev:backend",
-    "dev:frontend": "next dev",
+    "dev:frontend": "next dev --turbopack",
     "dev:backend": "convex dev",
     "predev": "convex dev --until-success && convex dashboard",
     "build": "next build",
@@ -12,6 +12,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@convex-dev/better-auth": "^0.6.2",
+    "better-auth": "1.2.7",
     "convex": "^1.23.0",
     "next": "15.2.3",
     "react": "^19.0.0",
