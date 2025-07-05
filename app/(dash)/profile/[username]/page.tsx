@@ -74,68 +74,16 @@ function ProfilePage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      {/* Author Header */}
-      {author ? (
-        <div className="mb-8 border-b border-gray-700 pb-6">
-          <div className="flex items-center gap-4 mb-4">
-            {author.profilePicture ? (
-              <img
-                src={author.profilePicture}
-                alt={author.name}
-                className="w-20 h-20 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center">
-                <span className="text-gray-300 font-semibold text-xl">
-                  {author.name.charAt(0)}
-                </span>
-              </div>
-            )}
-            <div>
-              <h1 className="text-3xl font-bold text-white">{author.name}</h1>
-              <p className="text-gray-400 text-lg">@{author.userName}</p>
-              <a
-                href={`https://twitter.com/${author.userName}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300"
-              >
-                View Profile on Twitter →
-              </a>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="mb-8 border-b border-gray-700 pb-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-20 h-20 rounded-full bg-gray-700 animate-pulse"></div>
-            <div>
-              <div className="h-8 bg-gray-700 rounded animate-pulse mb-2 w-48"></div>
-              <div className="h-6 bg-gray-700 rounded animate-pulse mb-2 w-32"></div>
-              <div className="h-4 bg-gray-700 rounded animate-pulse w-40"></div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tweet Count and Sorting Options */}
-      <div className="mb-6 flex justify-between items-center">
-        {tweets ? (
-          <p className="text-gray-300">
-            {tweets.length} tweet{tweets.length !== 1 ? "s" : ""}
-          </p>
-        ) : (
-          <div className="h-5 bg-gray-700 rounded animate-pulse w-24"></div>
-        )}
-
+      {/* Sorting Options */}
+      <div className="mb-6 flex justify-end items-center">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-300">Sort by:</span>
+          <span className="text-sm text-muted-foreground">Sort by:</span>
           <select
             value={sortBy}
             onChange={(e) =>
               setSortBy(e.target.value as "date" | "views" | "likes")
             }
-            className="px-3 py-1 border border-gray-600 bg-gray-800 text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-1 border border-border/30 bg-background/50 text-foreground rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
           >
             <option value="date">Date (Newest First)</option>
             <option value="views">Views (Highest First)</option>
@@ -159,15 +107,19 @@ function ProfilePage() {
             {isFetchingNextPage && (
               <div className="text-center py-4">
                 <div className="flex items-center justify-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                  <span className="text-gray-300">Loading more tweets...</span>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                  <span className="text-muted-foreground">
+                    Loading more tweets...
+                  </span>
                 </div>
               </div>
             )}
           </>
         ) : (
           <div className="text-center py-8">
-            <p className="text-gray-300">No tweets found for this author.</p>
+            <p className="text-muted-foreground">
+              No tweets found for this author.
+            </p>
           </div>
         )}
       </div>
@@ -177,24 +129,24 @@ function ProfilePage() {
 
 function TweetSkeleton() {
   return (
-    <div className="border border-gray-700 bg-gray-800 rounded-lg p-4 mb-4 shadow-sm">
+    <div className="border border-border/30 bg-accent/30 rounded-lg p-4 mb-4 shadow-sm">
       <div className="flex gap-4">
         <div className="flex-shrink-0">
-          <div className="h-4 bg-gray-700 rounded animate-pulse w-20"></div>
+          <div className="h-4 bg-muted border border-border/20 rounded animate-pulse w-20"></div>
         </div>
 
         <div className="flex-1">
           <div className="mb-3">
-            <div className="h-4 bg-gray-700 rounded animate-pulse mb-2 w-full"></div>
-            <div className="h-4 bg-gray-700 rounded animate-pulse mb-2 w-3/4"></div>
-            <div className="h-4 bg-gray-700 rounded animate-pulse w-1/2"></div>
+            <div className="h-4 bg-muted border border-border/20 rounded animate-pulse mb-2 w-full"></div>
+            <div className="h-4 bg-muted border border-border/20 rounded animate-pulse mb-2 w-3/4"></div>
+            <div className="h-4 bg-muted border border-border/20 rounded animate-pulse w-1/2"></div>
           </div>
 
           <div className="flex items-center gap-4">
             {Array.from({ length: 6 }).map((_, index) => (
               <div
                 key={index}
-                className="h-4 bg-gray-700 rounded animate-pulse w-8"
+                className="h-4 bg-muted border border-border/20 rounded animate-pulse w-8"
               ></div>
             ))}
           </div>
@@ -206,23 +158,23 @@ function TweetSkeleton() {
 
 function TweetCard({ tweet }: { tweet: any }) {
   return (
-    <div className="border border-gray-700 bg-gray-800 rounded-lg p-4 mb-4 shadow-sm">
+    <div className="border border-border/30 bg-accent/30 rounded-lg p-4 mb-4 shadow-sm hover:bg-accent/50 transition-all">
       <div className="flex gap-4">
-        <div className="flex-shrink-0 text-gray-400 text-sm">
+        <div className="flex-shrink-0 text-muted-foreground text-sm">
           {new Date(tweet.createdAt).toLocaleDateString()}
         </div>
 
         <div className="flex-1">
           <div className="mb-3">
-            <p className="text-white whitespace-pre-wrap">{tweet.text}</p>
+            <p className="text-foreground whitespace-pre-wrap">{tweet.text}</p>
             {tweet.isReply && tweet.inReplyToUsername && (
-              <p className="text-gray-400 text-sm mt-2">
+              <p className="text-muted-foreground text-sm mt-2">
                 Replying to @{tweet.inReplyToUsername}
               </p>
             )}
           </div>
 
-          <div className="flex items-center gap-4 text-gray-400 text-sm">
+          <div className="flex items-center gap-4 text-muted-foreground text-sm">
             <span className="flex items-center gap-1">
               <MessageCircle className="w-4 h-4" />
               {tweet.replyCount}
@@ -247,7 +199,7 @@ function TweetCard({ tweet }: { tweet: any }) {
               href={tweet.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-400 hover:text-blue-300 flex items-center"
+              className="text-primary hover:text-primary/80 flex items-center transition-colors"
             >
               <ExternalLink className="w-4 h-4" />
             </a>

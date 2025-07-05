@@ -20,25 +20,27 @@ function page() {
   } = useQuery(convexQuery(api.myFunctions.getUserAuthors, {}));
 
   if (userPending || authorsPending) {
-    return <div>Loading...</div>;
+    return <div className="text-muted-foreground">Loading...</div>;
   }
 
   if (userError || authorsError) {
-    return <div>Error loading data</div>;
+    return <div className="text-muted-foreground">Error loading data</div>;
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-8">Profile</h1>
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <h1 className="text-3xl font-bold mb-8 text-foreground">Profile</h1>
 
       {/* Current User Info */}
       <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-4">User Information</h2>
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <p>
+        <h2 className="text-xl font-semibold mb-4 text-foreground">
+          User Information
+        </h2>
+        <div className="bg-accent/30 border border-border/30 p-4 rounded-lg">
+          <p className="text-foreground">
             <strong>Name:</strong> {currentUser?.name || "N/A"}
           </p>
-          <p>
+          <p className="text-foreground">
             <strong>Email:</strong> {currentUser?.email || "N/A"}
           </p>
           {currentUser?.image && (
@@ -46,7 +48,7 @@ function page() {
               <img
                 src={currentUser.image}
                 alt="Profile"
-                className="w-16 h-16 rounded-full"
+                className="w-16 h-16 rounded-full border border-border/30"
               />
             </div>
           )}
@@ -55,29 +57,33 @@ function page() {
 
       {/* Authors Section */}
       <div>
-        <h2 className="text-xl font-semibold mb-4">Your Authors</h2>
+        <h2 className="text-xl font-semibold mb-4 text-foreground">
+          Your Authors
+        </h2>
         {authors && authors.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {authors.map((author) => (
               <Link href={`/profile/${author.userName}`} key={author._id}>
-                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                <div className="border border-border/30 bg-accent/30 rounded-lg p-4 shadow-sm hover:bg-accent/50 transition-all">
                   <div className="flex items-center mb-3">
                     {author.profilePicture && (
                       <img
                         src={author.profilePicture}
                         alt={author.name}
-                        className="w-12 h-12 rounded-full mr-3"
+                        className="w-12 h-12 rounded-full mr-3 border border-border/30"
                       />
                     )}
                     <div>
-                      <h3 className="font-semibold text-lg">{author.name}</h3>
-                      <p className="text-gray-600 text-sm">
+                      <h3 className="font-semibold text-lg text-foreground">
+                        {author.name}
+                      </h3>
+                      <p className="text-muted-foreground text-sm">
                         @{author.userName}
                       </p>
                     </div>
                   </div>
 
-                  <div className="text-sm text-gray-700 space-y-1">
+                  <div className="text-sm text-foreground space-y-1">
                     <p>
                       <strong>Followers:</strong>{" "}
                       {author.followers.toLocaleString()}
@@ -105,7 +111,7 @@ function page() {
           </div>
         ) : (
           <div className="text-center py-8">
-            <p className="text-gray-500">
+            <p className="text-muted-foreground">
               No authors found. Add some authors to track their content!
             </p>
           </div>

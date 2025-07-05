@@ -6,10 +6,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <main className="flex-1 p-4">
-        <SidebarTrigger />
-        {children}
-      </main>
+      <main className="flex-1 p-4">{children}</main>
     </SidebarProvider>
   );
 }
