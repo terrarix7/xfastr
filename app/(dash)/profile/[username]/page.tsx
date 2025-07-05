@@ -19,6 +19,14 @@ function ProfilePage() {
   const username = params.username as string;
   const [sortBy, setSortBy] = useState<"date" | "views" | "likes">("date");
 
+  // Get authors from cached query
+  const { data: authors } = useQuery(
+    convexQuery(api.myFunctions.getUserAuthors, {}),
+  );
+
+  // Find the specific author from the cached data
+  const author = authors?.find((a) => a.userName === username);
+
   const {
     data: tweets,
     isPending,
@@ -30,36 +38,11 @@ function ProfilePage() {
     }),
   );
 
-  if (tweets === undefined) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">@{username}</h1>
-          <p className="text-gray-600">Loading tweets...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!tweets || tweets.length === 0) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">@{username}</h1>
-          <p className="text-gray-600">No tweets found for this author.</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Get author info from the first tweet
-  const author = tweets[0]?.author;
-
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       {/* Author Header */}
-      {author && (
-        <div className="mb-8 border-b pb-6">
+      {author ? (
+        <div className="mb-8 border-b border-gray-700 pb-6">
           <div className="flex items-center gap-4 mb-4">
             {author.profilePicture ? (
               <img
@@ -68,25 +51,34 @@ function ProfilePage() {
                 className="w-20 h-20 rounded-full object-cover"
               />
             ) : (
-              <div className="w-20 h-20 rounded-full bg-gray-300 flex items-center justify-center">
-                <span className="text-gray-600 font-semibold text-xl">
+              <div className="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center">
+                <span className="text-gray-300 font-semibold text-xl">
                   {author.name.charAt(0)}
                 </span>
               </div>
             )}
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                {author.name}
-              </h1>
-              <p className="text-gray-500 text-lg">@{author.userName}</p>
+              <h1 className="text-3xl font-bold text-white">{author.name}</h1>
+              <p className="text-gray-400 text-lg">@{author.userName}</p>
               <a
-                href={author.url}
+                href={`https://twitter.com/${author.userName}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-500 hover:text-blue-700"
+                className="text-blue-400 hover:text-blue-300"
               >
                 View Profile on Twitter →
               </a>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="mb-8 border-b border-gray-700 pb-6">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-20 h-20 rounded-full bg-gray-700 animate-pulse"></div>
+            <div>
+              <div className="h-8 bg-gray-700 rounded animate-pulse mb-2 w-48"></div>
+              <div className="h-6 bg-gray-700 rounded animate-pulse mb-2 w-32"></div>
+              <div className="h-4 bg-gray-700 rounded animate-pulse w-40"></div>
             </div>
           </div>
         </div>
@@ -94,18 +86,22 @@ function ProfilePage() {
 
       {/* Tweet Count and Sorting Options */}
       <div className="mb-6 flex justify-between items-center">
-        <p className="text-gray-600">
-          {tweets.length} tweet{tweets.length !== 1 ? "s" : ""}
-        </p>
+        {tweets ? (
+          <p className="text-gray-300">
+            {tweets.length} tweet{tweets.length !== 1 ? "s" : ""}
+          </p>
+        ) : (
+          <div className="h-5 bg-gray-700 rounded animate-pulse w-24"></div>
+        )}
 
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">Sort by:</span>
+          <span className="text-sm text-gray-300">Sort by:</span>
           <select
             value={sortBy}
             onChange={(e) =>
               setSortBy(e.target.value as "date" | "views" | "likes")
             }
-            className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-1 border border-gray-600 bg-gray-800 text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="date">Date (Newest First)</option>
             <option value="views">Views (Highest First)</option>
@@ -116,9 +112,47 @@ function ProfilePage() {
 
       {/* Tweets */}
       <div className="space-y-4">
-        {tweets.map((tweet) => (
-          <TweetCard key={tweet._id} tweet={tweet} />
-        ))}
+        {isPending ? (
+          // Show skeleton loading cards
+          Array.from({ length: 5 }).map((_, index) => (
+            <TweetSkeleton key={index} />
+          ))
+        ) : tweets && tweets.length > 0 ? (
+          tweets.map((tweet) => <TweetCard key={tweet._id} tweet={tweet} />)
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-300">No tweets found for this author.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TweetSkeleton() {
+  return (
+    <div className="border border-gray-700 bg-gray-800 rounded-lg p-4 mb-4 shadow-sm">
+      <div className="flex gap-4">
+        <div className="flex-shrink-0">
+          <div className="h-4 bg-gray-700 rounded animate-pulse w-20"></div>
+        </div>
+
+        <div className="flex-1">
+          <div className="mb-3">
+            <div className="h-4 bg-gray-700 rounded animate-pulse mb-2 w-full"></div>
+            <div className="h-4 bg-gray-700 rounded animate-pulse mb-2 w-3/4"></div>
+            <div className="h-4 bg-gray-700 rounded animate-pulse w-1/2"></div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div
+                key={index}
+                className="h-4 bg-gray-700 rounded animate-pulse w-8"
+              ></div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -126,23 +160,23 @@ function ProfilePage() {
 
 function TweetCard({ tweet }: { tweet: any }) {
   return (
-    <div className="border rounded-lg p-4 mb-4 shadow-sm">
+    <div className="border border-gray-700 bg-gray-800 rounded-lg p-4 mb-4 shadow-sm">
       <div className="flex gap-4">
-        <div className="flex-shrink-0 text-gray-100 text-sm">
+        <div className="flex-shrink-0 text-gray-400 text-sm">
           {new Date(tweet.createdAt).toLocaleDateString()}
         </div>
 
         <div className="flex-1">
           <div className="mb-3">
-            <p className="text-gray-200 whitespace-pre-wrap">{tweet.text}</p>
+            <p className="text-white whitespace-pre-wrap">{tweet.text}</p>
             {tweet.isReply && tweet.inReplyToUsername && (
-              <p className="text-gray-500 text-sm mt-2">
+              <p className="text-gray-400 text-sm mt-2">
                 Replying to @{tweet.inReplyToUsername}
               </p>
             )}
           </div>
 
-          <div className="flex items-center gap-4 text-gray-100 text-sm">
+          <div className="flex items-center gap-4 text-gray-400 text-sm">
             <span className="flex items-center gap-1">
               <MessageCircle className="w-4 h-4" />
               {tweet.replyCount}
@@ -167,7 +201,7 @@ function TweetCard({ tweet }: { tweet: any }) {
               href={tweet.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-200 hover:text-blue-300 flex items-center"
+              className="text-blue-400 hover:text-blue-300 flex items-center"
             >
               <ExternalLink className="w-4 h-4" />
             </a>
