@@ -37,10 +37,11 @@ function ProfilePage() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ["tweets", username],
+    queryKey: ["tweets", username, sortBy],
     async queryFn({ pageParam }: { pageParam: string | null }) {
       const result = await convex.query(api.myFunctions.getTweetsByAuthor, {
         username,
+        sortBy,
         paginationOptions: {
           cursor: pageParam,
           numItems: 10,

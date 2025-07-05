@@ -66,10 +66,13 @@ export const getTweetsByAuthor = query({
       numItems: v.optional(v.number()),
     }),
     username: v.string(),
+    sortBy: v.optional(
+      v.union(v.literal("date"), v.literal("views"), v.literal("likes")),
+    ),
   },
   handler: async (
     ctx,
-    { paginationOptions: { cursor, numItems }, username },
+    { paginationOptions: { cursor, numItems }, username, sortBy },
   ) => {
     // First find the author by username
     const author = await ctx.db
@@ -81,41 +84,63 @@ export const getTweetsByAuthor = query({
       throw new Error(`Author with username ${username} not found`);
     }
 
-    // Get tweets for this author with pagination, ordered by creation date (newest first)
-    const results = await ctx.db
+    // Get all tweets for this author first (since we need to sort before paginating)
+    const allTweets = await ctx.db
       .query("tweets")
       .withIndex("by_author", (q) => q.eq("authorId", author._id))
-      .order("desc")
-      .paginate({
-        cursor,
-        numItems: numItems ?? 24,
-      });
+      .collect();
 
-    const { page, isDone, continueCursor } = results;
+    // Transform tweets to include author info
+    const tweetsWithAuthor = allTweets.map((tweet) => ({
+      _id: tweet._id,
+      text: tweet.text,
+      url: tweet.url,
+      retweetCount: tweet.retweetCount,
+      replyCount: tweet.replyCount,
+      likeCount: tweet.likeCount,
+      quoteCount: tweet.quoteCount,
+      viewCount: tweet.viewCount,
+      bookmarkCount: tweet.bookmarkCount,
+      createdAt: tweet.createdAt,
+      isReply: tweet.isReply,
+      inReplyToUsername: tweet.inReplyToUsername,
+      author: {
+        _id: author._id,
+        userName: author.userName,
+        name: author.name,
+        profilePicture: author.profilePicture,
+        url: author.url,
+      },
+    }));
+
+    // Sort tweets based on the sortBy parameter (default to date)
+    const sortOption = sortBy || "date";
+    switch (sortOption) {
+      case "views":
+        tweetsWithAuthor.sort((a, b) => b.viewCount - a.viewCount);
+        break;
+      case "likes":
+        tweetsWithAuthor.sort((a, b) => b.likeCount - a.likeCount);
+        break;
+      case "date":
+      default:
+        tweetsWithAuthor.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
+        break;
+    }
+
+    // Manual pagination since we sorted the results
+    const itemsPerPage = numItems ?? 24;
+    const startIndex = cursor ? parseInt(cursor) : 0;
+    const endIndex = startIndex + itemsPerPage;
+    const page = tweetsWithAuthor.slice(startIndex, endIndex);
+    const hasMore = endIndex < tweetsWithAuthor.length;
 
     return {
-      items: page.map((tweet) => ({
-        _id: tweet._id,
-        text: tweet.text,
-        url: tweet.url,
-        retweetCount: tweet.retweetCount,
-        replyCount: tweet.replyCount,
-        likeCount: tweet.likeCount,
-        quoteCount: tweet.quoteCount,
-        viewCount: tweet.viewCount,
-        bookmarkCount: tweet.bookmarkCount,
-        createdAt: tweet.createdAt,
-        isReply: tweet.isReply,
-        inReplyToUsername: tweet.inReplyToUsername,
-        author: {
-          _id: author._id,
-          userName: author.userName,
-          name: author.name,
-          profilePicture: author.profilePicture,
-          url: author.url,
-        },
-      })),
-      nextCursor: isDone ? undefined : continueCursor,
+      items: page,
+      nextCursor: hasMore ? endIndex.toString() : undefined,
     };
   },
 });
