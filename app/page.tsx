@@ -4,8 +4,27 @@ import { FeaturesSection } from "@/components/landing/feature-section";
 import { PricingSection } from "@/components/landing/pricing-section";
 import { FAQSection } from "@/components/landing/faq-section";
 import { Footer } from "@/components/landing/footer-section";
+import { fetchQuery } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
+import { redirect } from "next/navigation";
+import { getToken } from "@convex-dev/better-auth/nextjs";
+import { createAuth } from "@/convex/auth";
 
-export default function Home() {
+export default async function Home() {
+  const token = await getToken(createAuth);
+  const isAuthenticated = await fetchQuery(
+    api.auth.isAuthenticated,
+    {},
+    { token },
+  );
+
+  if (isAuthenticated) {
+    redirect("/create");
+  }
+  return <Content />;
+}
+
+function Content() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-indigo-100">
       <FloatingHeader />

@@ -1,19 +1,26 @@
 "use client";
 
 import { authClient } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
 
 export default function SignUpButton() {
+  const router = useRouter();
+
   const handleGoogleSignIn = async () => {
-    await authClient.signIn.social(
-      {
-        provider: "google",
-      },
-      {
-        onError: (ctx) => {
-          window.alert(ctx.error.message);
+    await authClient.signIn
+      .social(
+        {
+          provider: "google",
         },
-      },
-    );
+        {
+          onError: (ctx) => {
+            window.alert(ctx.error.message);
+          },
+        },
+      )
+      .finally(() => {
+        router.push("/create");
+      });
   };
 
   return (

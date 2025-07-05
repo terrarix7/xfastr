@@ -1,7 +1,23 @@
 import React from "react";
 import SignUpButton from "./button";
+import { fetchQuery } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
+import { redirect } from "next/navigation";
+import { getToken } from "@convex-dev/better-auth/nextjs";
+import { createAuth } from "@/convex/auth";
 
-function page() {
+async function page() {
+  const token = await getToken(createAuth);
+  const isAuthenticated = await fetchQuery(
+    api.auth.isAuthenticated,
+    {},
+    { token },
+  );
+
+  if (isAuthenticated) {
+    redirect("/create");
+  }
+
   return (
     <div>
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
