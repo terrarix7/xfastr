@@ -1,57 +1,21 @@
-"use client";
+import React from "react";
+import SignUpButton from "./button";
 
-import {
-  Authenticated,
-  Unauthenticated,
-  AuthLoading,
-  useQuery,
-} from "convex/react";
-import { authClient } from "@/lib/auth-client";
-import { api } from "@/convex/_generated/api";
-
-export default function App() {
-  return (
-    <>
-      <AuthLoading>
-        <div>Loading...</div>
-      </AuthLoading>
-      <Unauthenticated>
-        <SignIn />
-      </Unauthenticated>
-      <Authenticated>
-        <Dashboard />
-      </Authenticated>
-    </>
-  );
-}
-
-function Dashboard() {
-  const user = useQuery(api.auth.getCurrentUser);
+function page() {
   return (
     <div>
-      <div>Hello {user?.name}!</div>
-      <button onClick={() => authClient.signOut()}>Sign out</button>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-md">
+          <div className="text-center">
+            <h2 className="text-3xl font-bold text-gray-900">
+              Create your account
+            </h2>
+          </div>
+          <SignUpButton />
+        </div>
+      </div>
     </div>
   );
 }
 
-function SignIn() {
-  const handleGoogleSignUp = async () => {
-    await authClient.signIn.social(
-      {
-        provider: "google",
-      },
-      {
-        onError: (ctx) => {
-          window.alert(ctx.error.message);
-        },
-      },
-    );
-  };
-
-  return (
-    <div>
-      <button onClick={handleGoogleSignUp}>Continue with Google</button>
-    </div>
-  );
-}
+export default page;
