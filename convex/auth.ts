@@ -30,9 +30,8 @@ export const createAuth = (ctx: GenericCtx) =>
     // Simple non-verified email/password to get started
     socialProviders: {
       google: {
-        clientId:
-          "92070295650-3aq93uqldvfpsfqsf2340oert9hg7u1a.apps.googleusercontent.com"!,
-        clientSecret: "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"!,
+        clientId: process.env.GOOGLE_CLIENT_ID!,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       },
     },
     plugins: [convex()],
