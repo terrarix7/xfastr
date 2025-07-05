@@ -61,18 +61,24 @@ export const getUserAuthors = query({
 
 export const getTweetsByAuthor = query({
   args: {
-    paginationOpts: paginationOptsValidator,
+    paginationOptions: v.object({
+      cursor: v.union(v.string(), v.null()),
+      numItems: v.optional(v.number()),
+    }),
     username: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (
+    ctx,
+    { paginationOptions: { cursor, numItems }, username },
+  ) => {
     // First find the author by username
     const author = await ctx.db
       .query("authors")
-      .withIndex("by_userName", (q) => q.eq("userName", args.username))
+      .withIndex("by_userName", (q) => q.eq("userName", username))
       .unique();
 
     if (!author) {
-      throw new Error(`Author with username ${args.username} not found`);
+      throw new Error(`Author with username ${username} not found`);
     }
 
     // Get tweets for this author with pagination, ordered by creation date (newest first)
@@ -80,11 +86,15 @@ export const getTweetsByAuthor = query({
       .query("tweets")
       .withIndex("by_author", (q) => q.eq("authorId", author._id))
       .order("desc")
-      .paginate(args.paginationOpts);
+      .paginate({
+        cursor,
+        numItems: numItems ?? 24,
+      });
+
+    const { page, isDone, continueCursor } = results;
 
     return {
-      ...results,
-      page: results.page.map((tweet) => ({
+      items: page.map((tweet) => ({
         _id: tweet._id,
         text: tweet.text,
         url: tweet.url,
@@ -105,6 +115,7 @@ export const getTweetsByAuthor = query({
           url: author.url,
         },
       })),
+      nextCursor: isDone ? undefined : continueCursor,
     };
   },
 });

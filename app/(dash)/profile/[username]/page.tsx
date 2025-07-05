@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
+import { useConvex } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import {
   ExternalLink,
@@ -18,6 +19,7 @@ function ProfilePage() {
   const params = useParams();
   const username = params.username as string;
   const [sortBy, setSortBy] = useState<"date" | "views" | "likes">("date");
+  const convex = useConvex();
 
   // Get authors from cached query
   const { data: authors } = useQuery(
@@ -28,15 +30,46 @@ function ProfilePage() {
   const author = authors?.find((a) => a.userName === username);
 
   const {
-    data: tweets,
+    data,
     isPending,
     error,
-  } = useQuery(
-    convexQuery(api.myFunctions.getAllTweetsByAuthor, {
-      username,
-      sortBy,
-    }),
-  );
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["tweets", username],
+    async queryFn({ pageParam }: { pageParam: string | null }) {
+      const result = await convex.query(api.myFunctions.getTweetsByAuthor, {
+        username,
+        paginationOptions: {
+          cursor: pageParam,
+          numItems: 10,
+        },
+      });
+      return result;
+    },
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    initialPageParam: null,
+  });
+
+  const tweets = data?.pages.flatMap((page) => page.items) ?? [];
+
+  // Infinite scroll implementation
+  const handleScroll = useCallback(() => {
+    if (
+      window.innerHeight + document.documentElement.scrollTop >=
+      document.documentElement.offsetHeight * 0.8
+    ) {
+      if (hasNextPage && !isFetchingNextPage) {
+        fetchNextPage();
+      }
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [handleScroll]);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -118,7 +151,19 @@ function ProfilePage() {
             <TweetSkeleton key={index} />
           ))
         ) : tweets && tweets.length > 0 ? (
-          tweets.map((tweet) => <TweetCard key={tweet._id} tweet={tweet} />)
+          <>
+            {tweets.map((tweet) => (
+              <TweetCard key={tweet._id} tweet={tweet} />
+            ))}
+            {isFetchingNextPage && (
+              <div className="text-center py-4">
+                <div className="flex items-center justify-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                  <span className="text-gray-300">Loading more tweets...</span>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-8">
             <p className="text-gray-300">No tweets found for this author.</p>
