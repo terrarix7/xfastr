@@ -84,52 +84,116 @@ type ApifyResponseItem = ApifyTweet | ApifyMockTweet;
 
 const openai = new OpenAI({
   baseURL: "https://api.deepseek.com",
-  apiKey: process.env.DEEPSEEK_API_KEY,
+  apiKey: process.env.DEEPSEEK_API_KEY!, // Use environment variables for keys!
 });
-
-const systemPrompt = `
-You are an expert tweet classifier. Your task is to analyze a given tweet and assign it a concise, 1-2 word category that accurately reflects its primary intent.
-
-**Classification Guidelines:**
-1.  **Focus on Intent:** Determine the core purpose or message the tweet is trying to convey.
-2.  **Conciseness:** Categories should be 1-2 words.
-3.  **Adaptability:** While a set of common categories are provided for inspiration, your primary goal is to accurately categorize the given tweet. If a tweet's intent doesn't fit neatly into an existing category, or if a new pattern emerges, create a new, descriptive category. Do not be afraid to deviate from the provided examples if the tweet's intent demands it.
-4.  **Quality & Reliability:** Aim for classifications that are consistent, relevant, and reflect a deep understanding of the tweet's nuances, similar to how a skilled human analyst would operate.
-
-**Example Classifiers (for inspiration, not strict adherence):**
-*   Feedback/Suggestion
-*   Product Recommendation
-*   Tech Commentary
-*   Personal Update
-*   Question
-*   Announcement
-*   Response/Reply
-*   Reflection/Opinion
-*   Casual Comment
-*   Link Sharing
-*   Advice
-*   Casual Greeting
-*   Meta Comment
-
-**Important:** For each tweet, provide ONLY the determined category. Do not include explanations or any other surrounding text.
-`;
 
 const client = new ApifyClient({
   token: process.env.APIFY_TOKEN!,
 });
+
+const systemPrompt = `
+You are an expert tweet classifier. Your task is to analyze a list of tweets and assign a concise, 1-2 word category to each that accurately reflects its primary intent.
+
+**Input Format:**
+You will receive a list of tweets, each with a unique 'Tweet ID'.
+
+**Output Format:**
+Your response MUST be a single valid JSON object. This object should contain one key: "classifications".
+The value of "classifications" must be an array of objects.
+Each object in the array must have two keys:
+1. "id": The original Tweet ID you were given.
+2. "category": The 1-2 word classification you determined.
+
+**Example Output:**
+{
+  "classifications": [
+    { "id": "1789...", "category": "Announcement" },
+    { "id": "1788...", "category": "Tech Commentary" }
+  ]
+}
+
+**Classification Guidelines:**
+- **Focus on Intent:** Determine the core purpose of the tweet.
+- **Conciseness:** Categories must be 1-2 words.
+- **Adaptability:** If a tweet's intent doesn't fit the examples, create a new, descriptive category.
+- **Inspiration Categories:** Feedback/Suggestion, Product Recommendation, Tech Commentary, Personal Update, Question, Announcement, Response/Reply, Reflection/Opinion, Casual Comment, Link Sharing, Advice, Casual Greeting, Meta Comment.
+
+Do not include any text outside of the JSON object in your response.
+`;
+
+/**
+ * Classifies a batch of tweets using an AI model.
+ * @param tweets An array of ApifyTweet objects to classify.
+ * @returns A Map where the key is the tweet ID and the value is its classification.
+ */
+async function classifyTweetsInBatch(
+  tweets: ApifyTweet[],
+): Promise<Map<string, string>> {
+  if (tweets.length === 0) {
+    return new Map();
+  }
+
+  // Format the tweets for the AI prompt
+  const formattedTweets = tweets
+    .map((tweet) => `Tweet ID: ${tweet.id}\nTweet Text: "${tweet.text}"`)
+    .join("\n\n---\n\n");
+
+  const userPrompt = `Please classify the following tweets:\n\n${formattedTweets}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "deepseek-chat", // or your preferred model
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      response_format: { type: "json_object" }, // Enforce JSON output
+      temperature: 0.0, // For deterministic and consistent classification
+    });
+
+    const content = response.choices[0].message.content;
+    if (!content) {
+      throw new Error("AI returned empty content.");
+    }
+
+    const result = JSON.parse(content);
+    if (!result || !Array.isArray(result.classifications)) {
+      throw new Error("AI returned malformed JSON.");
+    }
+
+    const classificationMap = new Map<string, string>();
+    for (const item of result.classifications) {
+      if (item.id && item.category) {
+        classificationMap.set(String(item.id), item.category);
+      }
+    }
+
+    // Check if any tweets were missed by the AI
+    if (classificationMap.size !== tweets.length) {
+      console.warn(
+        `AI classified ${classificationMap.size} tweets, but received ${tweets.length}. Some may be unclassified.`,
+      );
+    }
+
+    return classificationMap;
+  } catch (error) {
+    console.error("Error during AI tweet classification:", error);
+    // Return an empty map on failure so the process can continue,
+    // tweets will just be marked as "Unclassified".
+    return new Map();
+  }
+}
 
 export const fetchTweets = action({
   args: {
     userName: v.string(),
   },
   handler: async (ctx, args) => {
-    // Check if the request is authenticated and the person exists
     const user = await betterAuthComponent.getAuthUser(ctx);
     if (!user) {
       throw new Error("User not authenticated");
     }
 
-    // Check if the author already exists
     const existingAuthor = await ctx.runQuery(
       api.apifyFunctions.getByUserName,
       {
@@ -138,7 +202,6 @@ export const fetchTweets = action({
     );
 
     if (existingAuthor) {
-      // Check if user is already associated with this author
       const existingAssociation = await ctx.runQuery(
         api.apifyFunctions.getByUserAndAuthor,
         {
@@ -148,13 +211,11 @@ export const fetchTweets = action({
       );
 
       if (!existingAssociation) {
-        // Associate the author with the current user
         await ctx.runMutation(api.apifyFunctions.createUserAuthor, {
           userId: user.userId as Id<"users">,
           authorId: existingAuthor._id,
         });
       }
-
       return {
         success: true,
         message: "Author already exists and is now associated with user",
@@ -170,57 +231,23 @@ export const fetchTweets = action({
     startDate.setDate(startDate.getDate() - 10);
 
     const formatDate = (date: Date) => {
-      return date
-        .toISOString()
-        .replace(/\.\d{3}Z$/, "_UTC")
-        .replace(/:/g, ":");
+      return date.toISOString().replace(/\.\d{3}Z$/, "_UTC");
     };
 
-    // Prepare Actor input
     const input = {
       searchTerms: [
-        `from:${args.userName} since:${formatDate(startDate)} until:${formatDate(fiveDaysAgo)}`,
+        `from:${args.userName} since:${formatDate(startDate)} until:${formatDate(
+          fiveDaysAgo,
+        )}`,
       ],
       maxItems: 2000,
       queryType: "Latest",
       lang: "en",
-      from: args.userName,
-      "filter:blue_verified": false,
-      "filter:nativeretweets": false,
-      "include:nativeretweets": false,
-      "filter:replies": false,
-      "filter:quote": false,
-      "filter:has_engagement": false,
-      min_retweets: 0,
-      min_faves: 0,
-      min_replies: 0,
-      "-min_retweets": 0,
-      "-min_faves": 0,
-      "-min_replies": 0,
-      "filter:media": false,
-      "filter:twimg": false,
-      "filter:images": false,
-      "filter:videos": false,
-      "filter:native_video": false,
-      "filter:vine": false,
-      "filter:consumer_video": false,
-      "filter:pro_video": false,
-      "filter:spaces": false,
-      "filter:links": false,
-      "filter:mentions": false,
-      "filter:news": false,
-      "filter:safe": false,
-      "filter:hashtags": false,
     };
 
     try {
-      // Run the Actor and wait for it to finish
       const run = await client.actor("CJdippxWmn9uRfooo").call(input);
-
-      // Fetch Actor results from the run's dataset
       const { items } = await client.dataset(run.defaultDatasetId).listItems();
-
-      // Filter out mock tweets and type the results properly
       const realTweets = (items as unknown as ApifyResponseItem[]).filter(
         (item): item is ApifyTweet => item.type === "tweet",
       );
@@ -229,7 +256,20 @@ export const fetchTweets = action({
         throw new Error("No real tweets found for this user");
       }
 
-      // Get author info from the first tweet
+      console.log(`Starting classification for ${realTweets.length} tweets...`);
+      const allClassifications = new Map<string, string>();
+      const batchSize = 100;
+
+      for (let i = 0; i < realTweets.length; i += batchSize) {
+        const batch = realTweets.slice(i, i + batchSize);
+        console.log(`Classifying batch ${i / batchSize + 1}...`);
+        const batchResults = await classifyTweetsInBatch(batch);
+        batchResults.forEach((value, key) =>
+          allClassifications.set(key, value),
+        );
+      }
+      console.log("Classification complete.");
+
       const firstTweet = realTweets[0];
       const authorData = firstTweet.author;
 
@@ -244,20 +284,26 @@ export const fetchTweets = action({
           followers: authorData.followers,
           following: authorData.following,
           createdAt: authorData.createdAt,
-          firstTweetDate: realTweets[realTweets.length - 1].createdAt, // oldest tweet
-          lastTweetDate: realTweets[0].createdAt, // newest tweet
-          // classifiers: [], // TODO: add classifiers
+          firstTweetDate: realTweets[realTweets.length - 1].createdAt,
+          lastTweetDate: realTweets[0].createdAt,
         },
       );
 
-      // Associate the author with the current user
       await ctx.runMutation(api.apifyFunctions.createUserAuthor, {
         userId: user.userId as Id<"users">,
         authorId: authorId,
       });
 
-      // Store all tweets
+      const uniqueClassifiers = new Set<string>();
+
       for (const tweet of realTweets) {
+        const classification =
+          allClassifications.get(tweet.id) || "Unclassified";
+
+        if (classification !== "Unclassified") {
+          uniqueClassifiers.add(classification);
+        }
+
         await ctx.runMutation(api.apifyFunctions.createTweet, {
           url: tweet.url,
           text: tweet.text,
@@ -271,13 +317,20 @@ export const fetchTweets = action({
           isReply: tweet.isReply,
           inReplyToUsername: tweet.inReplyToUsername || undefined,
           authorId: authorId,
-          // classification: tweet.classification, // TODO: add classification
+          classification: classification,
+        });
+      }
+
+      if (uniqueClassifiers.size > 0) {
+        await ctx.runMutation(api.authors.updateAuthorClassifiers, {
+          authorId: authorId,
+          newClassifiers: Array.from(uniqueClassifiers),
         });
       }
 
       return {
         success: true,
-        message: `Successfully fetched and stored ${realTweets.length} tweets for ${args.userName}`,
+        message: `Successfully fetched, classified, and stored ${realTweets.length} tweets for ${args.userName}`,
         authorId: authorId,
         tweetsCount: realTweets.length,
       };

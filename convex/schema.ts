@@ -21,6 +21,7 @@ export default defineSchema({
     createdAt: v.string(),
     firstTweetDate: v.optional(v.string()), // date of first tracked tweet
     lastTweetDate: v.optional(v.string()), // date of most recent tracked tweet
+    classifiers: v.optional(v.array(v.string())),
   }).index("by_userName", ["userName"]),
 
   userAuthors: defineTable({
@@ -45,6 +46,7 @@ export default defineSchema({
     isReply: v.boolean(),
     inReplyToUsername: v.optional(v.string()),
     authorId: v.id("authors"),
+    classification: v.optional(v.string()),
   })
     .index("by_author", ["authorId"])
     .index("by_createdAt", ["createdAt"]),

@@ -43,6 +43,7 @@ export const createAuthor = mutation({
     createdAt: v.string(),
     firstTweetDate: v.optional(v.string()),
     lastTweetDate: v.optional(v.string()),
+    classifiers: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("authors", {
@@ -56,6 +57,7 @@ export const createAuthor = mutation({
       createdAt: args.createdAt,
       firstTweetDate: args.firstTweetDate,
       lastTweetDate: args.lastTweetDate,
+      classifiers: args.classifiers,
     });
   },
 });
@@ -90,6 +92,7 @@ export const createTweet = mutation({
     isReply: v.boolean(),
     inReplyToUsername: v.optional(v.string()),
     authorId: v.id("authors"),
+    classification: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("tweets", {
@@ -105,6 +108,7 @@ export const createTweet = mutation({
       isReply: args.isReply,
       inReplyToUsername: args.inReplyToUsername,
       authorId: args.authorId,
+      classification: args.classification,
     });
   },
 });

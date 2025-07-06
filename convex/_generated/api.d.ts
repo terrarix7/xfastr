@@ -10,7 +10,9 @@
 
 import type * as apifyActions from "../apifyActions.js";
 import type * as apifyFunctions from "../apifyFunctions.js";
+import type * as apifygeminiActions from "../apifygeminiActions.js";
 import type * as auth from "../auth.js";
+import type * as authors from "../authors.js";
 import type * as http from "../http.js";
 import type * as myFunctions from "../myFunctions.js";
 import type * as polar from "../polar.js";
@@ -32,7 +34,9 @@ import type {
 declare const fullApi: ApiFromModules<{
   apifyActions: typeof apifyActions;
   apifyFunctions: typeof apifyFunctions;
+  apifygeminiActions: typeof apifygeminiActions;
   auth: typeof auth;
+  authors: typeof authors;
   http: typeof http;
   myFunctions: typeof myFunctions;
   polar: typeof polar;

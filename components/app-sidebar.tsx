@@ -76,7 +76,7 @@ export function AppSidebar() {
                 <span className="text-sm font-medium">
                   {user?.email && user.email.length > 26
                     ? `${user.email.substring(0, 26)}...`
-                    : user?.email || "pruthvirajthinks@gmail.com.com"}
+                    : user?.email}
                 </span>
                 <button
                   onClick={() => authClient.signOut()}
