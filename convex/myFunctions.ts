@@ -148,12 +148,8 @@ export const getTweetsByAuthor = query({
 export const getAllTweetsByAuthor = query({
   args: {
     username: v.string(),
-    sortBy: v.optional(
-      v.union(v.literal("views"), v.literal("likes"), v.literal("date")),
-    ),
   },
   handler: async (ctx, args) => {
-    // First find the author by username
     const author = await ctx.db
       .query("authors")
       .withIndex("by_userName", (q) => q.eq("userName", args.username))
@@ -163,13 +159,11 @@ export const getAllTweetsByAuthor = query({
       throw new Error(`Author with username ${args.username} not found`);
     }
 
-    // Get all tweets for this author
     const tweets = await ctx.db
       .query("tweets")
       .withIndex("by_author", (q) => q.eq("authorId", author._id))
       .collect();
 
-    // Transform tweets to include author info
     const tweetsWithAuthor = tweets.map((tweet) => ({
       _id: tweet._id,
       text: tweet.text,
@@ -183,32 +177,21 @@ export const getAllTweetsByAuthor = query({
       createdAt: tweet.createdAt,
       isReply: tweet.isReply,
       inReplyToUsername: tweet.inReplyToUsername,
+      classifier: tweet.classification,
       author: {
         _id: author._id,
         userName: author.userName,
         name: author.name,
         profilePicture: author.profilePicture,
         url: author.url,
+        classifiers: author.classifiers,
       },
     }));
 
-    // Sort tweets based on the sortBy parameter
-    const sortBy = args.sortBy || "date";
-    switch (sortBy) {
-      case "views":
-        tweetsWithAuthor.sort((a, b) => b.viewCount - a.viewCount);
-        break;
-      case "likes":
-        tweetsWithAuthor.sort((a, b) => b.likeCount - a.likeCount);
-        break;
-      case "date":
-      default:
-        tweetsWithAuthor.sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        );
-        break;
-    }
+    tweetsWithAuthor.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
 
     return tweetsWithAuthor;
   },
